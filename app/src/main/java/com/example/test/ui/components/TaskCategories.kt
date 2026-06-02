@@ -24,7 +24,7 @@ import androidx.compose.ui.unit.sp
 object TaskCategories {
     const val ALL = "All Types"
 
-    val ALL_CATEGORIES = listOf("Personal", "Work", "School", "Other")
+    val ALL_CATEGORIES = listOf("Personal", "Work", "University", "Other")
 
     @Composable
     fun colorsFor(category: String): Pair<Color, Color> {
@@ -34,7 +34,7 @@ object TaskCategories {
         val (bg, onBg) = when (category.trim().lowercase()) {
             "personal"   -> cs.primaryContainer   to cs.onPrimaryContainer
             "work"       -> cs.secondaryContainer to cs.onSecondaryContainer
-            "school" -> cs.tertiaryContainer  to cs.onTertiaryContainer
+            "university" -> cs.tertiaryContainer  to cs.onTertiaryContainer
             else         -> cs.surfaceVariant     to cs.onSurfaceVariant
         }
         return bg to (if (isDark) Color.White else onBg)
