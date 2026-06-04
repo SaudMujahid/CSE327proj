@@ -9,17 +9,15 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.DateRange
-import androidx.compose.material.icons.filled.Send
+import androidx.compose.material.icons.automirrored.filled.Send
+import androidx.compose.material.icons.automirrored.outlined.Label
 import androidx.compose.material.icons.outlined.AccessTime
 import androidx.compose.material.icons.outlined.CalendarMonth
-import androidx.compose.material.icons.outlined.Label
 import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -46,7 +44,6 @@ import java.util.*
 
 private val QuickAddCategories = listOf("Personal", "Work", "University", "Other")
 
-// Enum to manage views inside the single sheet window to prevent laggy nested overlays
 private enum class QuickAddTaskSheetView {
     MAIN,
     CATEGORY_PICKER,
@@ -59,7 +56,7 @@ fun QuickAddTaskSheet(
     taskViewModel: TaskViewModel,
     onDismiss: () -> Unit,
     onOpenFullEditor: () -> Unit,
-    initialDateMillis: Long? = null
+    initialDateMillis: Long? = null,
 ) {
     val context = LocalContext.current
     val cs = MaterialTheme.colorScheme
@@ -67,26 +64,24 @@ fun QuickAddTaskSheet(
     val scope = rememberCoroutineScope()
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
-    // ── State ────────────────────────────────────────────────────────────────
     var currentView by remember { mutableStateOf(QuickAddTaskSheetView.MAIN) }
     var title by remember { mutableStateOf("") }
     var description by remember { mutableStateOf("") }
     var showDescription by remember { mutableStateOf(false) }
 
     val todayMillis = remember { Calendar.getInstance().timeInMillis }
-    var selectedDateMillis by remember { mutableStateOf(initialDateMillis ?: todayMillis) }
+    var selectedDateMillis by remember { mutableLongStateOf(initialDateMillis ?: todayMillis) }
     var showDatePicker by remember { mutableStateOf(false) }
 
     var notificationMinutes by remember { mutableStateOf<Int?>(null) }
     var selectedCategory by remember { mutableStateOf<String?>(null) }
 
     var isScheduled by remember { mutableStateOf(false) }
-    var startMinutes by remember { mutableStateOf(9 * 60) }
-    var endMinutes by remember { mutableStateOf(10 * 60) }
+    var startMinutes by remember { mutableIntStateOf(9 * 60) }
+    var endMinutes by remember { mutableIntStateOf(10 * 60) }
 
     val focusRequester = remember { FocusRequester() }
 
-    // ── Formatters ───────────────────────────────────────────────────────────
     val dateFormatter = remember { SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()) }
     val displayShortFormatter = remember { SimpleDateFormat("MMM d", Locale.getDefault()) }
     val timeFormatter = remember { SimpleDateFormat("h:mm a", Locale.getDefault()) }
@@ -117,16 +112,17 @@ fun QuickAddTaskSheet(
         ).show()
     }
 
-    // ── Date picker dialog ───────────────────────────────────────────────────
     if (showDatePicker) {
         val dpState = rememberDatePickerState(initialSelectedDateMillis = selectedDateMillis)
         DatePickerDialog(
             onDismissRequest = { showDatePicker = false },
             confirmButton = {
-                TextButton(onClick = {
-                    dpState.selectedDateMillis?.let { selectedDateMillis = it }
-                    showDatePicker = false
-                }) { Text("OK") }
+                TextButton(
+                    onClick = {
+                        dpState.selectedDateMillis?.let { selectedDateMillis = it }
+                        showDatePicker = false
+                    }
+                ) { Text("OK") }
             },
             dismissButton = {
                 TextButton(onClick = { showDatePicker = false }) { Text("Cancel") }
@@ -134,7 +130,6 @@ fun QuickAddTaskSheet(
         ) { DatePicker(state = dpState) }
     }
 
-    // ── Auto-focus (with a slight delay to allow smooth sheet slide-up) ──────
     LaunchedEffect(Unit) {
         delay(250)
         focusRequester.requestFocus()
@@ -155,9 +150,11 @@ fun QuickAddTaskSheet(
                     .background(cs.onSurface.copy(alpha = 0.15f))
             )
         },
-        tonalElevation = 0.dp
+        tonalElevation = 0.dp,
+        properties = ModalBottomSheetProperties(
+            shouldDismissOnBackPress = true
+        )
     ) {
-        // Switch between sub-picker views smoothly inside the same layout hierarchy
         AnimatedContent(
             targetState = currentView,
             transitionSpec = {
@@ -170,18 +167,16 @@ fun QuickAddTaskSheet(
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .animateContentSize() // Smooth transition when description expands or active chips render
+                            .animateContentSize()
                             .navigationBarsPadding()
                             .imePadding()
                     ) {
-                        // ── Input area ───────────────────────────────────────
                         Column(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .padding(horizontal = 20.dp)
                                 .padding(top = 8.dp, bottom = 4.dp)
                         ) {
-                            // Title field
                             Box(modifier = Modifier.fillMaxWidth()) {
                                 if (title.isEmpty()) {
                                     Text(
@@ -213,7 +208,6 @@ fun QuickAddTaskSheet(
                                 )
                             }
 
-                            // Description field — appears after user starts typing
                             AnimatedVisibility(
                                 visible = showDescription,
                                 enter = expandVertically(
@@ -247,7 +241,6 @@ fun QuickAddTaskSheet(
 
                             Spacer(Modifier.height(12.dp))
 
-                            // ── Active chips row ─────────────────────────────
                             val hasChips = !isToday || notificationMinutes != null ||
                                     selectedCategory != null || isScheduled
                             AnimatedVisibility(visible = hasChips) {
@@ -306,14 +299,12 @@ fun QuickAddTaskSheet(
                             thickness = 1.dp
                         )
 
-                        // ── Bottom toolbar ───────────────────────────────────
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .padding(horizontal = 12.dp, vertical = 10.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            // Date icon
                             ToolbarIconButton(
                                 icon = Icons.Outlined.CalendarMonth,
                                 isActive = !isToday,
@@ -322,7 +313,6 @@ fun QuickAddTaskSheet(
                                 onClick = { showDatePicker = true }
                             )
 
-                            // Clock / notification icon
                             ToolbarIconButton(
                                 icon = Icons.Outlined.AccessTime,
                                 isActive = notificationMinutes != null,
@@ -337,16 +327,14 @@ fun QuickAddTaskSheet(
                                 }
                             )
 
-                            // Tag / category icon (Switches to internal category page)
                             ToolbarIconButton(
-                                icon = Icons.Outlined.Label,
+                                icon = Icons.AutoMirrored.Outlined.Label,
                                 isActive = selectedCategory != null,
                                 activeColor = cs.tertiary,
                                 inactiveColor = cs.onSurface.copy(alpha = 0.5f),
                                 onClick = { currentView = QuickAddTaskSheetView.CATEGORY_PICKER }
                             )
 
-                            // Schedule icon (Switches to internal schedule page)
                             ToolbarIconButton(
                                 icon = Icons.Outlined.Schedule,
                                 isActive = isScheduled,
@@ -355,7 +343,6 @@ fun QuickAddTaskSheet(
                                 onClick = { currentView = QuickAddTaskSheetView.SCHEDULE_PICKER }
                             )
 
-                            // Expand to full editor
                             TextButton(
                                 onClick = {
                                     scope.launch { sheetState.hide() }
@@ -372,7 +359,6 @@ fun QuickAddTaskSheet(
 
                             Spacer(Modifier.weight(1f))
 
-                            // Send button
                             val sendEnabled = title.isNotBlank()
                             val sendScale by animateFloatAsState(
                                 targetValue = if (sendEnabled) 1f else 0.82f,
@@ -414,7 +400,7 @@ fun QuickAddTaskSheet(
                                 contentAlignment = Alignment.Center
                             ) {
                                 Icon(
-                                    imageVector = Icons.Default.Send,
+                                    imageVector = Icons.AutoMirrored.Filled.Send,
                                     contentDescription = "Add task",
                                     tint = if (sendEnabled) {
                                         if (isDark) Color.White else cs.onPrimary
@@ -566,8 +552,6 @@ fun QuickAddTaskSheet(
     }
 }
 
-// ── ToolbarIconButton ─────────────────────────────────────────────────────────
-
 @Composable
 private fun ToolbarIconButton(
     icon: ImageVector,
@@ -604,8 +588,6 @@ private fun ToolbarIconButton(
         )
     }
 }
-
-// ── ActiveChip ────────────────────────────────────────────────────────────────
 
 @Composable
 private fun ActiveChip(

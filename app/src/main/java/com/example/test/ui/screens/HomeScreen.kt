@@ -154,14 +154,18 @@ fun HomeScreen(
     var homeTaskFilter by remember { mutableStateOf(HomeTaskFilter.PENDING) }
     var selectedCategory by remember { mutableStateOf(TaskCategories.ALL) }
     var showQuickAdd by remember { mutableStateOf(false) }
-    val statusFilteredTasks = when (homeTaskFilter) {
-        HomeTaskFilter.PENDING -> pendingTasks
-        HomeTaskFilter.COMPLETED -> completedTasks
+    val statusFilteredTasks = remember(homeTaskFilter, pendingTasks, completedTasks) {
+        when (homeTaskFilter) {
+            HomeTaskFilter.PENDING -> pendingTasks
+            HomeTaskFilter.COMPLETED -> completedTasks
+        }
     }
-    val filteredTasks = if (selectedCategory == TaskCategories.ALL) {
-        statusFilteredTasks
-    } else {
-        statusFilteredTasks.filter { it.category.equals(selectedCategory, ignoreCase = true) }
+    val filteredTasks = remember(statusFilteredTasks, selectedCategory) {
+        if (selectedCategory == TaskCategories.ALL) {
+            statusFilteredTasks
+        } else {
+            statusFilteredTasks.filter { it.category.equals(selectedCategory, ignoreCase = true) }
+        }
     }
     var menuOpen by remember { mutableStateOf(false) }
     val isDark = isSystemInDarkTheme()
