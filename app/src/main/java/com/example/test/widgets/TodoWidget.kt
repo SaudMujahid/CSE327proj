@@ -1,24 +1,25 @@
 package com.example.test.widgets
 
 import android.content.Context
-import android.content.Intent
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.glance.*
+import androidx.glance.action.ActionParameters
+import androidx.glance.action.actionParametersOf
 import androidx.glance.action.clickable
 import androidx.glance.action.actionStartActivity
 import androidx.glance.appwidget.GlanceAppWidget
 import androidx.glance.appwidget.cornerRadius
 import androidx.glance.appwidget.provideContent
+import androidx.glance.appwidget.action.actionRunCallback
 import androidx.glance.layout.*
 import androidx.glance.text.*
 import androidx.glance.unit.ColorProvider
 import androidx.glance.background
 import com.example.test.MainActivity
 import com.example.test.data.models.Task
-import com.example.test.data.repository.TaskRepository
 import kotlinx.coroutines.flow.first
 import java.text.SimpleDateFormat
 import java.util.*
@@ -36,6 +37,10 @@ class TodoWidget : GlanceAppWidget() {
         provideContent {
             TodoWidgetContent(tasks = todayTasks)
         }
+    }
+
+    companion object {
+        val RouteKey = ActionParameters.Key<String>("route")
     }
 }
 
@@ -55,7 +60,6 @@ private fun TodoWidgetContent(tasks: List<Task>) {
             .background(bgColor)
             .padding(16.dp)
             .cornerRadius(20.dp)
-            .clickable(actionStartActivity<MainActivity>())
     ) {
         Column(modifier = GlanceModifier.fillMaxSize()) {
 
@@ -73,6 +77,24 @@ private fun TodoWidgetContent(tasks: List<Task>) {
                     ),
                     modifier = GlanceModifier.defaultWeight()
                 )
+                
+                // Add Task Button
+                Text(
+                    text = "+",
+                    style = TextStyle(
+                        color = primaryColor,
+                        fontSize = 24.sp,
+                        fontWeight = FontWeight.Bold
+                    ),
+                    modifier = GlanceModifier
+                        .padding(horizontal = 8.dp)
+                        .clickable(
+                            actionStartActivity<MainActivity>(
+                                actionParametersOf(TodoWidget.RouteKey to "add_task")
+                            )
+                        )
+                )
+
                 val pending = tasks.count { !it.isChecked }
                 if (pending > 0) {
                     Box(
@@ -114,7 +136,7 @@ private fun TodoWidgetContent(tasks: List<Task>) {
             if (tasks.isEmpty()) {
                 // Empty state
                 Box(
-                    modifier = GlanceModifier.fillMaxSize(),
+                    modifier = GlanceModifier.fillMaxSize().clickable(actionStartActivity<MainActivity>()),
                     contentAlignment = Alignment.Center
                 ) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -150,7 +172,7 @@ private fun TodoWidgetContent(tasks: List<Task>) {
                                 color = primaryColor,
                                 fontSize = 12.sp
                             ),
-                            modifier = GlanceModifier.padding(top = 2.dp)
+                            modifier = GlanceModifier.padding(top = 2.dp).clickable(actionStartActivity<MainActivity>())
                         )
                     }
                 }
@@ -172,7 +194,12 @@ private fun TaskRow(
             .fillMaxWidth()
             .background(surfaceColor)
             .cornerRadius(10.dp)
-            .padding(horizontal = 10.dp, vertical = 8.dp),
+            .padding(horizontal = 10.dp, vertical = 8.dp)
+            .clickable(
+                actionRunCallback<ToggleTaskAction>(
+                    actionParametersOf(ToggleTaskAction.TaskIdKey to task.id)
+                )
+            ),
         verticalAlignment = Alignment.CenterVertically
     ) {
         // Checkbox indicator

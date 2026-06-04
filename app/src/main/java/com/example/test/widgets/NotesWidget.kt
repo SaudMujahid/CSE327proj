@@ -6,6 +6,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.glance.*
+import androidx.glance.action.ActionParameters
+import androidx.glance.action.actionParametersOf
 import androidx.glance.action.actionStartActivity
 import androidx.glance.action.clickable
 import androidx.glance.appwidget.GlanceAppWidget
@@ -20,6 +22,10 @@ import com.example.test.MainActivity
 class NotesWidget : GlanceAppWidget() {
     override suspend fun provideGlance(context: Context, id: GlanceId) {
         provideContent { NotesWidgetContent() }
+    }
+
+    companion object {
+        val RouteKey = ActionParameters.Key<String>("route")
     }
 }
 
@@ -66,6 +72,7 @@ private fun NotesWidgetContent() {
                     label = "View All",
                     bgColor = allColor,
                     textColor = onBg,
+                    route = "notes",
                     modifier = GlanceModifier.defaultWeight().fillMaxHeight().padding(end = 5.dp)
                 )
                 NotesTile(
@@ -73,6 +80,7 @@ private fun NotesWidgetContent() {
                     label = "Notes",
                     bgColor = noteColor,
                     textColor = onBg,
+                    route = "note_editor/-1/NOTE",
                     modifier = GlanceModifier.defaultWeight().fillMaxHeight().padding(start = 5.dp)
                 )
             }
@@ -88,6 +96,7 @@ private fun NotesWidgetContent() {
                     label = "Journal",
                     bgColor = journalColor,
                     textColor = onBg,
+                    route = "note_editor/-1/JOURNAL",
                     modifier = GlanceModifier.defaultWeight().fillMaxHeight().padding(end = 5.dp)
                 )
                 NotesTile(
@@ -95,6 +104,7 @@ private fun NotesWidgetContent() {
                     label = "List",
                     bgColor = listColor,
                     textColor = onBg,
+                    route = "note_editor/-1/LIST",
                     modifier = GlanceModifier.defaultWeight().fillMaxHeight().padding(start = 5.dp)
                 )
             }
@@ -108,13 +118,18 @@ private fun NotesTile(
     label: String,
     bgColor: ColorProvider,
     textColor: ColorProvider,
+    route: String,
     modifier: GlanceModifier = GlanceModifier
 ) {
     Box(
         modifier = modifier
             .background(bgColor)
             .cornerRadius(14.dp)
-            .clickable(actionStartActivity<MainActivity>()),
+            .clickable(
+                actionStartActivity<MainActivity>(
+                    actionParametersOf(NotesWidget.RouteKey to route)
+                )
+            ),
         contentAlignment = Alignment.Center
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -131,4 +146,3 @@ private fun NotesTile(
         }
     }
 }
-

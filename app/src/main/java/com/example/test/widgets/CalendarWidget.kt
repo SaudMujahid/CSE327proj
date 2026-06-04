@@ -6,6 +6,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.glance.*
+import androidx.glance.action.ActionParameters
+import androidx.glance.action.actionParametersOf
 import androidx.glance.action.actionStartActivity
 import androidx.glance.action.clickable
 import androidx.glance.appwidget.GlanceAppWidget
@@ -30,7 +32,6 @@ class CalendarWidget : GlanceAppWidget() {
         val cal = Calendar.getInstance()
         val year = cal.get(Calendar.YEAR)
         val month = cal.get(Calendar.MONTH)
-        val today = cal.get(Calendar.DAY_OF_MONTH)
         val todayStr = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
 
         val firstDay = Calendar.getInstance().apply { set(year, month, 1) }
@@ -39,22 +40,21 @@ class CalendarWidget : GlanceAppWidget() {
         val monthLabel = SimpleDateFormat("MMMM yyyy", Locale.getDefault()).format(firstDay.time)
         val dateFmt = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
 
-        data class DayCell(val day: Int?, val dateStr: String?, val hasTask: Boolean)
-
-        val cells = mutableListOf<DayCell>()
-        repeat(startDow) { cells.add(DayCell(null, null, false)) }
+        // day, dateStr, hasTask, millis
+        val cells = mutableListOf<Triple<Int?, String?, Pair<Boolean, Long?>>>()
+        
+        repeat(startDow) { cells.add(Triple(null, null, false to null)) }
         for (d in 1..daysInMonth) {
             val c = Calendar.getInstance().apply { set(year, month, d) }
             val ds = dateFmt.format(c.time)
-            cells.add(DayCell(d, ds, taskDateSet.contains(ds)))
+            cells.add(Triple(d, ds, taskDateSet.contains(ds) to c.timeInMillis))
         }
-        while (cells.size % 7 != 0) cells.add(DayCell(null, null, false))
+        while (cells.size % 7 != 0) cells.add(Triple(null, null, false to null))
 
         provideContent {
             CalendarWidgetContent(
                 monthLabel = monthLabel,
-                cells = cells.map { cell -> Triple(cell.day, cell.dateStr, cell.hasTask) },
-                today = today,
+                cells = cells,
                 todayStr = todayStr
             )
         }
@@ -64,12 +64,10 @@ class CalendarWidget : GlanceAppWidget() {
 @Composable
 private fun CalendarWidgetContent(
     monthLabel: String,
-    cells: List<Triple<Int?, String?, Boolean>>,
-    today: Int,
+    cells: List<Triple<Int?, String?, Pair<Boolean, Long?>>>,
     todayStr: String
 ) {
     val bgColor     = ColorProvider(Color(0xFF1C1C1E))
-    val surfaceColor= ColorProvider(Color(0xFF2C2C2E))
     val onBg        = ColorProvider(Color.White)
     val subText     = ColorProvider(Color(0xFF8E8E93))
     val primaryColor= ColorProvider(Color(0xFF0A84FF))
@@ -82,19 +80,26 @@ private fun CalendarWidgetContent(
             .background(bgColor)
             .padding(14.dp)
             .cornerRadius(20.dp)
-            .clickable(actionStartActivity<MainActivity>())
     ) {
         Column(modifier = GlanceModifier.fillMaxSize()) {
 
             // Month header
-            Text(
-                text = monthLabel,
-                style = TextStyle(
-                    color = onBg,
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.Bold
+            Row(modifier = GlanceModifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = monthLabel,
+                    style = TextStyle(
+                        color = onBg,
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Bold
+                    ),
+                    modifier = GlanceModifier.defaultWeight()
                 )
-            )
+                Text(
+                    text = "Open",
+                    style = TextStyle(color = primaryColor, fontSize = 12.sp),
+                    modifier = GlanceModifier.clickable(actionStartActivity<MainActivity>())
+                )
+            }
 
             Spacer(GlanceModifier.height(10.dp))
 
@@ -127,7 +132,8 @@ private fun CalendarWidgetContent(
                     modifier = GlanceModifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    week.forEach { (day, dateStr, hasTask) ->
+                    week.forEach { (day, dateStr, taskInfo) ->
+                        val (hasTask, millis) = taskInfo
                         val isToday = day != null && dateStr == todayStr
                         Box(
                             modifier = GlanceModifier
@@ -141,7 +147,16 @@ private fun CalendarWidgetContent(
                                     }
                                 )
                                 .cornerRadius(8.dp)
-                                .padding(vertical = 5.dp),
+                                .padding(vertical = 5.dp)
+                                .then(
+                                    if (day != null && millis != null) {
+                                        GlanceModifier.clickable(
+                                            actionStartActivity<MainActivity>(
+                                                actionParametersOf(TodoWidget.RouteKey to "add_task?dateMillis=$millis")
+                                            )
+                                        )
+                                    } else GlanceModifier
+                                ),
                             contentAlignment = Alignment.Center
                         ) {
                             Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -176,4 +191,3 @@ private fun CalendarWidgetContent(
         }
     }
 }
-

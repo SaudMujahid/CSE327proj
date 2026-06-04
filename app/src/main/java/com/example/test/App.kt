@@ -23,10 +23,14 @@ import com.example.test.ui.theme.TestTheme
 import com.example.test.ui.viewmodels.*
 import kotlinx.coroutines.launch
 
+import androidx.navigation.navDeepLink
+import android.net.Uri
+
 @Composable
 fun MyApp(
     taskRepository: TaskRepository,
-    noteRepository: NoteRepository
+    noteRepository: NoteRepository,
+    initialRoute: String? = null
 ) {
     val context = LocalContext.current
     val prefsRepo = remember { AppPreferencesRepository.getInstance(context) }
@@ -57,6 +61,12 @@ fun MyApp(
     val currentPaletteIndex = paletteIndex!!
 
     val navController = rememberNavController()
+    
+    LaunchedEffect(initialRoute) {
+        if (initialRoute != null) {
+            navController.navigate(initialRoute)
+        }
+    }
     val taskViewModel: TaskViewModel = viewModel(factory = ViewModelFactory(taskRepository))
     val calendarViewModel: CalendarViewModel = viewModel(factory = ViewModelFactory(taskRepository))
     val noteViewModel: NoteViewModel = viewModel(factory = ViewModelFactory(noteRepository))
@@ -129,6 +139,9 @@ fun MyApp(
                                 type = NavType.LongType
                                 defaultValue = -1L
                             }
+                        ),
+                        deepLinks = listOf(
+                            navDeepLink { uriPattern = "app://test/add_task?dateMillis={dateMillis}" }
                         )
                     ) { backStackEntry ->
                         val dateMillis = backStackEntry.arguments?.getLong("dateMillis") ?: -1L
@@ -161,7 +174,12 @@ fun MyApp(
                         )
                     }
 
-                    composable("notes") {
+                    composable(
+                        "notes",
+                        deepLinks = listOf(
+                            navDeepLink { uriPattern = "app://test/notes" }
+                        )
+                    ) {
                         NotesScreen(
                             noteViewModel = noteViewModel,
                             onNoteClick = { noteId ->
@@ -174,7 +192,12 @@ fun MyApp(
                         )
                     }
 
-                    composable("note_editor/{noteId}/{noteType}") { backStackEntry ->
+                    composable(
+                        "note_editor/{noteId}/{noteType}",
+                        deepLinks = listOf(
+                            navDeepLink { uriPattern = "app://test/note_editor/{noteId}/{noteType}" }
+                        )
+                    ) { backStackEntry ->
                         val noteId = backStackEntry.arguments?.getString("noteId")?.toLongOrNull() ?: -1L
                         val noteType = backStackEntry.arguments?.getString("noteType") ?: "NOTE"
                         NoteEditorScreen(

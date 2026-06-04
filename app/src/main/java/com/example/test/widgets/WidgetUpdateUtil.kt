@@ -11,6 +11,7 @@ object WidgetUpdateUtil {
         CoroutineScope(Dispatchers.IO).launch {
             TodoWidget().updateAll(context)
             CalendarWidget().updateAll(context)
+            NotesWidget().updateAll(context)
         }
     }
 }

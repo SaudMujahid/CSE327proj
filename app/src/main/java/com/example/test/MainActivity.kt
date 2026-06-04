@@ -47,9 +47,11 @@ class MainActivity : FragmentActivity() {
         TaskScheduler.scheduleDailyDigest(this)
 
         setContent {
+            val route = intent.getStringExtra("route")
             MyApp(
                 taskRepository = taskRepository,
-                noteRepository = noteRepository
+                noteRepository = noteRepository,
+                initialRoute = route
             )
         }
     }
