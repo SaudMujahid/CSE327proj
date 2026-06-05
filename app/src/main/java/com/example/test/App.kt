@@ -133,22 +133,22 @@ fun MyApp(
                     }
 
                     composable(
-                        "add_task?dateMillis={dateMillis}",
+                        "add_task?dateMillis={dateMillis}&startMinutes={startMinutes}",
                         arguments = listOf(
-                            navArgument("dateMillis") {
-                                type = NavType.LongType
-                                defaultValue = -1L
-                            }
+                            navArgument("dateMillis"){ type = NavType.LongType; defaultValue = -1L },
+                            navArgument("startMinutes") { type = NavType.IntType; defaultValue = -1 }
                         ),
                         deepLinks = listOf(
                             navDeepLink { uriPattern = "app://test/add_task?dateMillis={dateMillis}" }
                         )
                     ) { backStackEntry ->
                         val dateMillis = backStackEntry.arguments?.getLong("dateMillis") ?: -1L
+                        val startMinutes = backStackEntry.arguments?.getInt("startMinutes") ?: -1
                         AddTaskScreen(
                             taskViewModel = taskViewModel,
                             onClose = { navController.popBackStack() },
                             initialDateMillis = if (dateMillis > 0) dateMillis else null,
+                            initialStartMinutes = if (startMinutes >= 0) startMinutes else null,
                             existingTask = taskToEdit
                         )
                         // Clear taskToEdit when screen is disposed
@@ -161,12 +161,12 @@ fun MyApp(
                         CalendarScreen(
                             viewModel = calendarViewModel,
                             onNavigateHome = { navController.popBackStack("home", false) },
-                            onAddTask = { task ->
+                            onAddTask = { task, startMinutes ->
                                 taskToEdit = task
                                 if (task == null) {
-                                    val selectedDate = calendarViewModel.selectedDate.value
-                                    val dateMillis = selectedDate.time
-                                    navController.navigate("add_task?dateMillis=$dateMillis")
+                                    val dateMillis = calendarViewModel.selectedDate.value.time
+                                    val minutesPart = if (startMinutes != null) "&startMinutes=$startMinutes" else ""
+                                    navController.navigate("add_task?dateMillis=$dateMillis$minutesPart")
                                 } else {
                                     navController.navigate("add_task")
                                 }

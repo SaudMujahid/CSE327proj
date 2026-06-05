@@ -55,6 +55,7 @@ fun AddTaskScreen(
     taskViewModel: TaskViewModel,
     onClose: () -> Unit,
     initialDateMillis: Long? = null,
+    initialStartMinutes: Int? = null,
     existingTask: Task? = null
 ) {
     val cs    = MaterialTheme.colorScheme
@@ -79,9 +80,15 @@ fun AddTaskScreen(
     }
     var showDatePicker by remember { mutableStateOf(false) }
 
-    var isScheduled  by remember(existingTask) { mutableStateOf(existingTask?.isScheduled ?: false) }
-    var startMinutes by remember(existingTask) { mutableStateOf(existingTask?.scheduleStartMinutes ?: 9 * 60) }
-    var endMinutes   by remember(existingTask) { mutableStateOf(existingTask?.scheduleEndMinutes   ?: 10 * 60) }
+    var isScheduled  by remember(existingTask, initialStartMinutes) {
+        mutableStateOf(existingTask?.isScheduled ?: (initialStartMinutes != null))
+    }
+    var startMinutes by remember(existingTask, initialStartMinutes) {
+        mutableStateOf(existingTask?.scheduleStartMinutes ?: initialStartMinutes ?: (9 * 60))
+    }
+    var endMinutes   by remember(existingTask, initialStartMinutes) {
+        mutableStateOf(existingTask?.scheduleEndMinutes ?: initialStartMinutes?.plus(60) ?: (10 * 60))
+    }
 
     var notificationMinutes by remember(existingTask) { mutableStateOf(existingTask?.notificationMinutes) }
 

@@ -161,7 +161,7 @@ fun rememberOverscrollConnection(
 fun CalendarScreen(
     viewModel: CalendarViewModel,
     onNavigateHome: () -> Unit = {},
-    onAddTask: (Task?) -> Unit = {}
+    onAddTask: (Task?, Int?) -> Unit
 ) {
     val colorScheme = MaterialTheme.colorScheme
     val viewMode by viewModel.viewMode.collectAsState()
@@ -232,15 +232,15 @@ fun CalendarScreen(
                     }
                 }
                 HorizontalDivider(
-                    thickness = 2.dp,
-                    color = colorScheme.primary
+                    thickness = 1.dp,
+                    color = colorScheme.outlineVariant
                 )
             }
         },
         floatingActionButton = {
             if (viewMode != CalendarViewMode.YEAR) {
                 FloatingActionButton(
-                    onClick = { onAddTask(null) },
+                    onClick = { onAddTask(null, null) },
                     containerColor = colorScheme.primary,
                     contentColor = colorScheme.onPrimary
                 ) {
@@ -429,7 +429,7 @@ private fun isCurrentYearMonth(year: Int, month: Int): Boolean {
 @Composable
 fun MonthView(
     viewModel: CalendarViewModel,
-    onAddTask: (Task?) -> Unit = {},
+    onAddTask: (Task?, Int?) -> Unit = { _, _ -> },
     onNavigateToDay: () -> Unit,
     onDoubleTapDate: (Date) -> Unit
 ) {
@@ -452,7 +452,7 @@ fun MonthView(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(16.dp)
+            .padding(horizontal = 16.dp, vertical = 8.dp)
             // Gesture handling belongs to the parent Column so drag animations are silky smooth [1]
             .calendarSwipeDetector(
                 onSwipeLeft = { viewModel.nextMonth() },
@@ -470,7 +470,6 @@ fun MonthView(
                 onClick = { viewModel.previousMonth() },
                 modifier = Modifier
                     .size(40.dp)
-                    .background(colorScheme.surface, CircleShape)
             ) {
                 Icon(
                     Icons.Default.ChevronLeft,
@@ -482,7 +481,6 @@ fun MonthView(
                 onClick = { viewModel.nextMonth() },
                 modifier = Modifier
                     .size(40.dp)
-                    .background(colorScheme.surface, CircleShape)
             ) {
                 Icon(
                     Icons.Default.ChevronRight,
@@ -492,18 +490,18 @@ fun MonthView(
             }
         }
 
-        Spacer(modifier = Modifier.height(16.dp))
-        DaysOfWeekHeader()
         Spacer(modifier = Modifier.height(8.dp))
+        DaysOfWeekHeader(modifier = Modifier.padding(horizontal = 4.dp))
+        Spacer(modifier = Modifier.height(4.dp))
 
         LazyVerticalGrid(
             columns = GridCells.Fixed(7),
             userScrollEnabled = false, // Allows click-through and lets parent Column catch swipe details [1]
             modifier = Modifier
                 .fillMaxWidth()
-                .height(300.dp)
-                .clip(RoundedCornerShape(18.dp))
-                .background(colorScheme.surface.copy(alpha = 0.72f)),
+                .wrapContentHeight() // Changed from fixed 300.dp
+                .clip(RoundedCornerShape(12.dp))
+                .background(colorScheme.surfaceVariant.copy(alpha = 0.2f)),
             contentPadding = PaddingValues(4.dp),
             horizontalArrangement = Arrangement.spacedBy(4.dp),
             verticalArrangement = Arrangement.spacedBy(4.dp)
@@ -527,14 +525,14 @@ fun MonthView(
                 )
             }
         }
-        Spacer(modifier = Modifier.height(20.dp))
+        Spacer(modifier = Modifier.height(12.dp))
 
         HorizontalDivider(
-            thickness = 1.dp,
-            color = colorScheme.outline.copy(alpha = 0.25f)
+            thickness = 0.5.dp,
+            color = colorScheme.outline.copy(alpha = 0.2f)
         )
 
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(12.dp))
 
         Box(modifier = Modifier.weight(1f)) {
             Column {
@@ -564,7 +562,7 @@ fun MonthView(
                             task = task,
                             checked = task.isChecked,
                             onCheckedChange = { viewModel.toggleTask(task) },
-                            onEditTask = { onAddTask(task) },
+                            onEditTask = { onAddTask(task, null) },
                             onDelete = { viewModel.deleteTask(task) }
                         )
                         if (task != tasksForSelectedDate.last()) {
@@ -585,7 +583,7 @@ fun MonthView(
 @Composable
 fun DayView(
     viewModel: CalendarViewModel,
-    onAddTask: (Task?) -> Unit = {},
+    onAddTask: (Task?, Int?) -> Unit = { _, _ -> },
     onPullDownToMonth: () -> Unit
 ) {
     val colorScheme = MaterialTheme.colorScheme
@@ -632,7 +630,7 @@ fun DayView(
                     tasks = tasksForSelectedDate,
                     onTaskToggle = { viewModel.toggleTask(it) },
                     onTaskDelete = { viewModel.deleteTask(it) },
-                    onTaskEdit = onAddTask
+                    onTaskEdit = { task -> onAddTask(task, null) }
                 )
             }
 
@@ -651,11 +649,11 @@ fun DayView(
 // ─── Helper composables ───────────────────────────────────
 
 @Composable
-fun DaysOfWeekHeader() {
+fun DaysOfWeekHeader(modifier: Modifier = Modifier) {
     val daysOfWeek = listOf("Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat")
     val colorScheme = MaterialTheme.colorScheme
     Row(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.SpaceEvenly
     ) {
         daysOfWeek.forEach { day ->
@@ -683,36 +681,32 @@ fun CalendarDayCell(
     val incompleteScheduledCount = scheduledTasks.count { !it.isChecked }
     val completeScheduledCount = scheduledTasks.count { it.isChecked }
 
-    val backgroundColor = when {
-        isSelected -> colorScheme.primary
-        scheduledTasks.isNotEmpty() && incompleteScheduledCount > 0 ->
-            colorScheme.error.copy(alpha = 0.2f)
-        scheduledTasks.isNotEmpty() && completeScheduledCount > 0 && incompleteScheduledCount == 0 ->
-            colorScheme.tertiary.copy(alpha = 0.2f)
-        day.isToday -> colorScheme.primary.copy(alpha = 0.2f)
-        else -> colorScheme.surface
+    // Color background ONLY if it is the current day
+    val backgroundColor = if (day.isToday) {
+        colorScheme.primary.copy(alpha = 0.15f)
+    } else {
+        Color.Transparent
     }
 
     val isDark = isSystemInDarkTheme()
     val textColor = when {
-        isSelected -> colorScheme.onPrimary
-        !day.isCurrentMonth -> (if (isDark) Color.White else colorScheme.onSurfaceVariant).copy(alpha = 0.4f)
+        isSelected -> colorScheme.primary
+        !day.isCurrentMonth -> (if (isDark) Color.White else colorScheme.onSurfaceVariant).copy(alpha = 0.3f)
         else -> if (isDark) Color.White else colorScheme.onSurface
     }
 
     Box(
         modifier = Modifier
             .aspectRatio(1f)
-            .shadow(if (isSelected) 3.dp else 1.dp, RoundedCornerShape(12.dp))
             .clip(RoundedCornerShape(12.dp))
             .background(backgroundColor)
             .border(
-                width = if (day.isToday && !isSelected) 2.dp else 0.dp,
-                color = if (day.isToday && !isSelected) colorScheme.primary else Color.Transparent,
+                width = if (isSelected) 2.dp else if (day.isToday) 1.dp else 0.dp,
+                color = if (isSelected) colorScheme.primary else if (day.isToday) colorScheme.primary.copy(alpha = 0.3f) else Color.Transparent,
                 shape = RoundedCornerShape(12.dp)
             )
             .clickable(onClick = onClick)
-            .padding(4.dp),
+            .padding(2.dp),
         contentAlignment = Alignment.TopCenter
     ) {
         Column(
@@ -722,11 +716,11 @@ fun CalendarDayCell(
             Text(
                 text = day.dayOfMonth.toString(),
                 fontSize = 14.sp,
-                fontWeight = if (day.isToday) FontWeight.Bold else FontWeight.Normal,
+                fontWeight = if (day.isToday || isSelected) FontWeight.Bold else FontWeight.Normal,
                 color = textColor
             )
             if (scheduledTasks.isNotEmpty()) {
-                Spacer(modifier = Modifier.height(4.dp))
+                Spacer(modifier = Modifier.height(2.dp))
                 Row(
                     horizontalArrangement = Arrangement.Center,
                     modifier = Modifier.fillMaxWidth().padding(horizontal = 2.dp),
@@ -736,7 +730,7 @@ fun CalendarDayCell(
                         Box(
                             modifier = Modifier.height(2.dp).width(4.dp)
                                 .clip(RoundedCornerShape(1.dp))
-                                .background(if (isSelected) colorScheme.onPrimary else if (isDark) Color.White else colorScheme.error)
+                                .background(if (isDark) Color.White else colorScheme.error)
                         )
                         Spacer(modifier = Modifier.width(2.dp))
                     }
@@ -744,7 +738,7 @@ fun CalendarDayCell(
                         Box(
                             modifier = Modifier.height(2.dp).width(4.dp)
                                 .clip(RoundedCornerShape(1.dp))
-                                .background(if (isSelected) colorScheme.onPrimary else if (isDark) Color.White else colorScheme.tertiary)
+                                .background(if (isDark) Color.White else colorScheme.tertiary)
                         )
                     }
                 }
@@ -770,7 +764,7 @@ fun CalendarDayCell(
                         Text(
                             text = "+",
                             fontSize = 8.sp,
-                            color = if (isSelected) colorScheme.onPrimary else if (isDark) Color.White else colorScheme.onSurfaceVariant,
+                            color = if (isDark) Color.White else colorScheme.onSurfaceVariant,
                             modifier = Modifier.padding(start = 2.dp)
                         )
                     }
@@ -1079,7 +1073,8 @@ fun CollapsibleScheduleCard(
     isExpanded: Boolean,
     onToggleExpand: () -> Unit,
     tasks: List<Task>,
-    onAddTask: (Task?) -> Unit = {}
+    //onAddTask: (Task?) -> Unit = {}
+    onAddTask: (Task?, Int?) -> Unit
 ) {
     val colorScheme = MaterialTheme.colorScheme
     val rotationAngle by animateFloatAsState(if (isExpanded) 180f else 0f, label = "rotation")
@@ -1124,7 +1119,7 @@ fun CollapsibleScheduleCard(
 @Composable
 fun TimelineView(
     tasks: List<Task>,
-    onAddTask: (Task?) -> Unit = {}
+    onAddTask: (Task?, Int?) -> Unit = { _, _ -> }
 ) {
     val colorScheme = MaterialTheme.colorScheme
     val hourSlotHeight = 72.dp
@@ -1173,7 +1168,7 @@ fun TimelineView(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .height(hourSlotHeight)
-                                .clickable { onAddTask(null) }
+                                .clickable { onAddTask(null, hourIndex * 60) }
                         ) {
                             HorizontalDivider(
                                 modifier = Modifier.fillMaxWidth().align(Alignment.TopStart),
@@ -1204,7 +1199,7 @@ fun TimelineView(
                             .border(1.dp, bg.copy(alpha = 0.7f), RoundedCornerShape(14.dp))
                             .clip(RoundedCornerShape(14.dp))
                             .background(bg)
-                            .clickable { onAddTask(task) } // Opens the specific task on click
+                            .clickable { onAddTask(task, null) }// Opens the specific task on click
                             .padding(horizontal = 12.dp, vertical = 10.dp)
                     ) {
                         Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
